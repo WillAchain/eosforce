@@ -59,7 +59,7 @@ void apply_context::exec_one( action_trace& trace )
             (*native)( *this );
          }
 
-         if(!((act.account == config::system_account_name) && (act.name == N(onfee)))) {
+         if(!((act.account == config::system_account_name) && (act.name == N(onfee) || act.name == N(voteagefee)))) {
             if( a.code.size() > 0
                 && !( act.account == config::system_account_name && act.name == N(setcode) &&
                       receiver == config::system_account_name )) {
@@ -210,8 +210,9 @@ void apply_context::execute_inline( action&& a ) {
    EOS_ASSERT(code != nullptr, action_validate_exception,
               "inline action's code account ${account} does not exist", ( "account", a.account ));
    if( control.head_block_num() > 4470000 ) {
-      EOS_ASSERT(       ( (a.name != N(onfee))   || ( a.account != config::system_account_name))
-                     && ( (a.name != N(onblock)) || ( a.account != config::system_account_name)),
+      EOS_ASSERT(       ( (a.name != N(onfee))      || ( a.account != config::system_account_name))
+                     && ( (a.name != N(voteagefee)) || ( a.account != config::system_account_name))
+                     && ( (a.name != N(onblock))    || ( a.account != config::system_account_name)),
                      action_validate_exception, "no call" );
    }
 
@@ -531,9 +532,8 @@ int apply_context::db_store_i64( uint64_t code, uint64_t scope, uint64_t table, 
    const auto& obj = db.create<key_value_object>( [&]( auto& o ) {
       o.t_id        = tableid;
       o.primary_key = id;
-      o.value.resize( buffer_size );
+      o.value.assign( buffer, buffer_size );
       o.payer       = payer;
-      memcpy( o.value.data(), buffer, buffer_size );
    });
 
    db.modify( tab, [&]( auto& t ) {
@@ -572,8 +572,7 @@ void apply_context::db_update_i64( int iterator, account_name payer, const char*
    }
 
    db.modify( obj, [&]( auto& o ) {
-     o.value.resize( buffer_size );
-     memcpy( o.value.data(), buffer, buffer_size );
+     o.value.assign( buffer, buffer_size );
      o.payer = payer;
    });
 }
